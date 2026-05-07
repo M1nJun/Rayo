@@ -14,6 +14,13 @@ struct Order {
     long long quantity;
 };
 
+struct Trade {
+    int buyOrderId;
+    int sellOrderId;
+    long long price;
+    long long quantity;
+};
+
 std::string sideToString(Side side) {
     if (side == Side::Buy) {
         return "Buy";
@@ -30,6 +37,21 @@ bool isValidOrder(const Order& order) {
     return order.price > 0 && order.quantity > 0;
 }
 
+bool canMatch(const Order& buyOrder, const Order& sellOrder) {
+    return buyOrder.price >= sellOrder.price;
+}
+
+Trade createTrade(const Order& buyOrder, const Order& sellOrder) {
+    long long tradeQuantity = std::min(buyOrder.quantity, sellOrder.quantity);
+
+    return Trade{
+        buyOrder.id,
+        sellOrder.id,
+        sellOrder.price,
+        tradeQuantity
+    };
+}
+
 void printOrder(const Order& order) {
     std::cout << "Order ID: " << order.id << '\n';
     std::cout << "Side: " << sideToString(order.side) << '\n';
@@ -39,16 +61,33 @@ void printOrder(const Order& order) {
     std::cout << "-------------------" << '\n';
 }
 
+void printTrade(const Trade& trade) {
+    std::cout << "TRADE ";
+    std::cout << "buy=" << trade.buyOrderId << " ";
+    std::cout << "sell=" << trade.sellOrderId << " ";
+    std::cout << "price=" << trade.price << " ";
+    std::cout << "quantity=" << trade.quantity << " ";
+
+}
+
 int main() {
     std::vector<Order> orders;
 
-    orders.push_back(Order{1, Side::Buy, 100, 50});
-    orders.push_back(Order{2, Side::Sell, 105, 20});
-    orders.push_back(Order{3, Side::Buy, 101, 10});
-    orders.push_back(Order{4, Side::Sell, 99, 30});
+    Order sellOrder(Order{1, Side::Sell, 100, 50});
+    Order buyOrder(Order{2, Side::Buy, 101, 20});
+    
 
-    for (const Order& order : orders) {
-        printOrder(order);
+    std::cout << "Sell Order:" << '\n';
+    printOrder(sellOrder);
+
+    std::cout << "Buy Order:" << '\n';
+    printOrder(buyOrder);
+
+    if (canMatch(buyOrder, sellOrder)) {
+        Trade trade = createTrade(buyOrder, sellOrder);
+        printTrade(trade);
+    } else {
+        std::cout << "No trade happened." << '\n';
     }
 
     return 0;
