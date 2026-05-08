@@ -29,8 +29,8 @@ std::string sideToString(Side side) {
     return "Sell";
 }
 
-bool isBuyOrder(const Order& order) {
-    return order.side == Side::Buy;
+bool isFilled(const Order& order) {
+    return order.quantity == 0;
 }
 
 bool isValidOrder(const Order& order) {
@@ -63,7 +63,15 @@ void printOrder(const Order& order) {
     std::cout << "Side: " << sideToString(order.side) << '\n';
     std::cout << "Price: " << order.price << '\n';
     std::cout << "Quantity: " << order.quantity << '\n';
-    std::cout << "Valid: " << (isValidOrder(order) ? "Yes" : "No") << '\n';
+    
+    if (isFilled(order)) {
+        std::cout << "Status: Filled" << '\n';
+    } else if (isValidOrder(order)) {
+        std::cout << "Status: Open" << '\n';
+    } else {
+        std::cout << "Status: Invalid" << '\n';
+    }
+
     std::cout << "-------------------" << '\n';
 }
 
@@ -76,32 +84,59 @@ void printTrade(const Trade& trade) {
 
 }
 
-int main() {
-    std::vector<Order> orders;
+void matchBuyOrder(Order& buyOrder, std::vector<Order>& sellOrders, std::vector<Trade>& trades) {
+    for (Order& sellOrder : sellOrders) {
+        if (isFilled(buyOrder)) {
+            break;
+        }
 
-    Order sellOrder(Order{1, Side::Sell, 100, 50});
-    Order buyOrder{2, Side::Buy, 101, 80};
-    // Order buyOrder(Order{2, Side::Buy, 101, 20});
-    // Order buyOrder{2, Side::Buy, 99, 20};
-    
-    std::cout << "Before matching" << '\n';
-    printOrder(sellOrder);
+        if (isFilled(sellOrder)) {
+            continue;
+        }
+
+        if (canMatch(buyOrder, sellOrder)) {
+            Trade trade = createTrade(buyOrder, sellOrder);
+            applyTrade(buyOrder, sellOrder, trade);
+            trades.push_back(trade);
+        }
+    }
+}
+
+int main() {
+    std::vector<Order> sellOrders;
+    std::vector<Trade> trades;
+
+    sellOrders.push_back(Order{1, Side::Sell, 100, 30});
+    sellOrders.push_back(Order{2, Side::Sell, 100, 40});
+
+    Order buyOrder{3, Side::Buy, 100, 50};
+
+    std::cout << "Before matching:" << '\n';
+    std::cout << "Incoming buy order:" << '\n';
     printOrder(buyOrder);
 
-    if (canMatch(buyOrder, sellOrder)) {
-        Trade trade = createTrade(buyOrder, sellOrder);
-        applyTrade(buyOrder, sellOrder, trade);
+    std::cout << "Sell orders:" << '\n';
+    for (const Order& sellOrder : sellOrders) {
+        printOrder(sellOrder);
+    }
 
-        std::cout << "Trade happened:" << '\n';
+    matchBuyOrder(buyOrder, sellOrders, trades);
+
+    std::cout << '\n';
+    std::cout << "Trades:" << '\n';
+    for (const Trade& trade : trades) {
         printTrade(trade);
-    } else {
-        std::cout << "No trade happened." << '\n';
     }
 
     std::cout << '\n';
     std::cout << "After matching:" << '\n';
-    printOrder(sellOrder);
+    std::cout << "Incoming buy order:" << '\n';
     printOrder(buyOrder);
+
+    std::cout << "Sell orders:" << '\n';
+    for (const Order& sellOrder : sellOrders) {
+        printOrder(sellOrder);
+    }
 
     return 0;
 }
