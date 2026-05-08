@@ -1,6 +1,9 @@
 #include <iostream>
 #include <string>
+#include <map>
+#include <deque>
 #include <vector>
+#include <algorithm>
 
 enum class Side {
     Buy,
@@ -80,47 +83,86 @@ void printTrade(const Trade& trade) {
     std::cout << "buy=" << trade.buyOrderId << " ";
     std::cout << "sell=" << trade.sellOrderId << " ";
     std::cout << "price=" << trade.price << " ";
-    std::cout << "quantity=" << trade.quantity << " ";
+    std::cout << "quantity=" << trade.quantity << '\n';
 
 }
 
-void matchBuyOrder(Order& buyOrder, std::vector<Order>& sellOrders, std::vector<Trade>& trades) {
-    for (Order& sellOrder : sellOrders) {
-        if (isFilled(buyOrder)) {
+
+//Map with the key as the price and the value is the queue that FIFOs the incoming orders
+//std::map keeps its keys sorted in ascending order. Thus, the first item is the lowest price.
+void addSellOrder(std::map<long long, std::deque<Order>>& sellBook, const Order& order) {
+    sellBook[order.price].push_back(order);
+}
+
+void printSellBook(const std::map<long long, std::deque<Order>>& sellBook) {
+    std::cout << "SELL BOOK:" << '\n';
+
+    if (sellBook.empty()) {
+        std::cout << "empty" << '\n';
+        return;
+    }
+
+    for (const auto& [price, orders] : sellBook) {
+        std::cout << "Price" << price << ":" << '\n';
+
+        for (const Order& order : orders) {
+            std::cout << "  id=" << order.id
+                      << " qty=" << order.quantity
+                      << '\n';
+        }
+    }
+}
+
+void matchBuyOrder(
+    Order& buyOrder,
+    std::map<long long, std::deque<Order>>& sellBook,
+    std::vector<Trade>& trades
+) {
+    while (!isFilled(buyOrder) && !sellBook.empty()) {
+        auto bestSellLevel = sellBook.begin();
+
+        long long bestSellPrice = bestSellLevel->first;
+        std::deque<Order>& ordersAtBestPrice = bestSellLevel->second;
+
+        if (buyOrder.price < bestSellPrice) {
             break;
         }
 
+        Order& sellOrder = ordersAtBestPrice.front();
+
+        Trade trade = createTrade(buyOrder, sellOrder);
+        applyTrade(buyOrder, sellOrder, trade);
+        trades.push_back(trade);
+
         if (isFilled(sellOrder)) {
-            continue;
+            ordersAtBestPrice.pop_front();
         }
 
-        if (canMatch(buyOrder, sellOrder)) {
-            Trade trade = createTrade(buyOrder, sellOrder);
-            applyTrade(buyOrder, sellOrder, trade);
-            trades.push_back(trade);
+        if (ordersAtBestPrice.empty()) {
+            sellBook.erase(bestSellLevel);
         }
     }
 }
 
 int main() {
-    std::vector<Order> sellOrders;
+    std::map<long long, std::deque<Order>> sellBook;
     std::vector<Trade> trades;
 
-    sellOrders.push_back(Order{1, Side::Sell, 100, 30});
-    sellOrders.push_back(Order{2, Side::Sell, 100, 40});
+    addSellOrder(sellBook, Order{1, Side::Sell, 105, 30});
+    addSellOrder(sellBook, Order{2, Side::Sell, 100, 40});
+    addSellOrder(sellBook, Order{3, Side::Sell, 100, 20});
+    addSellOrder(sellBook, Order{4, Side::Sell, 101, 50});
 
-    Order buyOrder{3, Side::Buy, 100, 50};
+    Order buyOrder{5, Side::Buy, 101, 70};
 
     std::cout << "Before matching:" << '\n';
+    printSellBook(sellBook);
+
+    std::cout << '\n';
     std::cout << "Incoming buy order:" << '\n';
     printOrder(buyOrder);
 
-    std::cout << "Sell orders:" << '\n';
-    for (const Order& sellOrder : sellOrders) {
-        printOrder(sellOrder);
-    }
-
-    matchBuyOrder(buyOrder, sellOrders, trades);
+    matchBuyOrder(buyOrder, sellBook, trades);
 
     std::cout << '\n';
     std::cout << "Trades:" << '\n';
@@ -133,10 +175,7 @@ int main() {
     std::cout << "Incoming buy order:" << '\n';
     printOrder(buyOrder);
 
-    std::cout << "Sell orders:" << '\n';
-    for (const Order& sellOrder : sellOrders) {
-        printOrder(sellOrder);
-    }
+    printSellBook(sellBook);
 
     return 0;
 }

@@ -8,13 +8,31 @@ The second goal is performance: once the matching engine is correct, the project
 
 ## Current Stage
 
-Stage 1: Basic C++ order model
+Stage 2: Sell-side price-time priority matching
 
-Implemented:
+The project currently supports matching one incoming buy order against a sell-side order book.
+
+## Implemented So Far
+
 - `Side` enum for buy/sell orders
 - `Order` struct
+- `Trade` struct
 - Order validation
-- Basic order printing
+- Trade creation
+- Quantity updates after trades
+- Sell-side order book
+- Price priority using `std::map`
+- FIFO time priority using `std::deque`
+- Matching one buy order against multiple sell orders
+- Trade history stored in a `std::vector`
+
+## Current Order Book Design
+
+The sell-side book is represented as:
+
+```cpp
+using OrderQueue = std::deque<Order>;
+using SellBook = std::map<long long, OrderQueue>;
 
 ## Planned Features
 
