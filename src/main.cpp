@@ -206,39 +206,52 @@ void matchSellOrder(
     }
 }
 
+// Receives the order by copy without the pointer. Because submitOrder needs to modify the order's remaining quantity while matching.
+void submitOrder(
+    Order order,
+    std::map<long long, std::deque<Order>, std::greater<long long>>& buyBook,
+    std::map<long long, std::deque<Order>>& sellBook,
+    std::vector<Trade>& trades
+) {
+    if (!isValidOrder(order)) {
+        std::cout << "Rejected invalid order: id=" << order.id << '\n';
+        return;
+    }
+
+    if (order.side == Side::Buy) {
+        matchBuyOrder(order, sellBook, trades);
+
+        if (!isFilled(order)) {
+            addBuyOrder(buyBook, order);
+        }
+    } else {
+        matchSellOrder(order, buyBook, trades);
+
+        if (!isFilled(order)) {
+            addSellOrder(sellBook, order);
+        }
+    }
+}
+
 int main() {
-    std::map<long long, std::deque<Order>> sellBook;
     std::map<long long, std::deque<Order>, std::greater<long long>> buyBook;
+    std::map<long long, std::deque<Order>> sellBook;
     std::vector<Trade> trades;
 
-    addSellOrder(sellBook, Order{1, Side::Sell, 105, 30});
-    addSellOrder(sellBook, Order{2, Side::Sell, 100, 40});
-    addSellOrder(sellBook, Order{3, Side::Sell, 100, 20});
-    addSellOrder(sellBook, Order{4, Side::Sell, 101, 50});
+    submitOrder(Order{1, Side::Buy, 99, 30}, buyBook, sellBook, trades);
+    submitOrder(Order{2, Side::Buy, 98, 40}, buyBook, sellBook, trades);
 
-    addBuyOrder(buyBook, Order{10, Side::Buy, 95, 30});
-    addBuyOrder(buyBook, Order{11, Side::Buy, 103, 40});
-    addBuyOrder(buyBook, Order{12, Side::Buy, 103, 20});
-    addBuyOrder(buyBook, Order{13, Side::Buy, 101, 50});
+    submitOrder(Order{3, Side::Sell, 105, 30}, buyBook, sellBook, trades);
+    submitOrder(Order{4, Side::Sell, 106, 40}, buyBook, sellBook, trades);
 
-    std::cout << "Before matching:" << '\n';
-    printSellBook(sellBook);
-    std::cout << '\n';
+    std::cout << "Initial stable book:" << '\n';
     printBuyBook(buyBook);
+    std::cout << '\n';
+    printSellBook(sellBook);
 
     std::cout << '\n';
-    std::cout << "Incoming buy order:" << '\n';
-    Order buyOrder{5, Side::Buy, 101, 70};
-    printOrder(buyOrder);
-
-    matchBuyOrder(buyOrder, sellBook, trades);
-
-    std::cout << '\n';
-    std::cout << "Incoming sell order:" << '\n';
-    Order sellOrder{14, Side::Sell, 101, 60};
-    printOrder(sellOrder);
-
-    matchSellOrder(sellOrder, buyBook, trades);
+    std::cout << "Submitting aggressive buy order:" << '\n';
+    submitOrder(Order{5, Side::Buy, 106, 50}, buyBook, sellBook, trades);
 
     std::cout << '\n';
     std::cout << "Trades:" << '\n';
@@ -247,17 +260,10 @@ int main() {
     }
 
     std::cout << '\n';
-    std::cout << "After matching:" << '\n';
-
-    std::cout << "Incoming buy order:" << '\n';
-    printOrder(buyOrder);
-
-    std::cout << "Incoming sell order:" << '\n';
-    printOrder(sellOrder);
-
-    printSellBook(sellBook);
-    std::cout << '\n';
+    std::cout << "Final book:" << '\n';
     printBuyBook(buyBook);
+    std::cout << '\n';
+    printSellBook(sellBook);
 
     return 0;
 }
